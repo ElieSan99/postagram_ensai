@@ -17,8 +17,15 @@ class ServerlessStack(TerraformStack):
         AwsProvider(self, "AWS", region="us-east-1")
 
         account_id = DataAwsCallerIdentity(self, "acount_id").account_id
-        
-        bucket = S3Bucket()
+
+        # Creation d'une bucket S3
+        bucket = S3Bucket(
+            self, "s3_bucket",
+            bucket_prefix="my-cdktf-bucket-postgram-elie",
+            acl="private",
+            force_destroy=True,
+            versioning={"enabled": True}
+            )
 
         S3BucketCorsConfiguration(
             self, "cors",
@@ -29,20 +36,62 @@ class ServerlessStack(TerraformStack):
                 allowed_origins = ["*"]
             )]
             )
-        dynamo_table = DynamodbTable()
+        
+        # Creation d'une table DynamoDB
+        dynamo_table = DynamodbTable(
+            self, "DynamodDB-table",
+            name="post-table",
+            hash_key="user",
+            range_key="id",
+            attribute=[
+                DynamodbTableAttribute(name="user", type="S"),
+                DynamodbTableAttribute(name="id", type="S")
+            ],
+            billing_mode="PROVISIONED",
+            read_capacity=5,
+            write_capacity=5
+            )
+        
 
         # Packagage du code
-        code = TerraformAsset()
+        code = TerraformAsset(
+            self, "code",
+            path="./lambda",
+            type=AssetType.ARCHIVE
+            )
+        
+        # Creation d'une fonction Lambda
+        """lambda_function = LambdaFunction(self,
+                "lambda",
+                function_name="lambda_postgram",
+                runtime="python3.9",
+                memory_size=128,
+                timeout=120,
+                role=f"arn:aws:iam::{account_id}:role/LabRole",
+                filename= code.path,
+                handler="lambda_function.lambda_handler",
+                environment={"variables":{"OUTPUT_QUEUE": output_url}}
+            )"""
 
-        lambda_function = LambdaFunction()
+        #permission = LambdaPermission()
 
-        permission = LambdaPermission()
+        #notification = S3BucketNotification()
 
-        notification = S3BucketNotification()
 
-        TerraformOutput()
+        # Output des noms des ressources
+        TerraformOutput(
+            self, "s3_bucket_name",
+            value=bucket.id,
+            description="Name of the S3 bucket"
+            )
 
-        TerraformOutput()
+        TerraformOutput(
+            self, "dynamodb_table_name",
+            value=dynamo_table.name,
+            description="Name of the DynamoDB table"
+            )
+        
+
 
 app = App()
 ServerlessStack(app, "cdktf_serverless")
