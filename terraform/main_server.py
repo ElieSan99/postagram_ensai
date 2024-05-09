@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from constructs import Construct
-from cdktf import App, TerraformStack
+from cdktf import App, TerraformStack, TerraformOutput
 from cdktf_cdktf_provider_aws.provider import AwsProvider
 from cdktf_cdktf_provider_aws.default_vpc import DefaultVpc
 from cdktf_cdktf_provider_aws.default_subnet import DefaultSubnet
@@ -14,9 +14,9 @@ from cdktf_cdktf_provider_aws.data_aws_caller_identity import DataAwsCallerIdent
 
 import base64
 
-bucket=""
-dynamo_table=""
-your_repo=""
+bucket="my-cdktf-bucket-postgram20240509151249006500000001"
+dynamo_table="post-table"
+your_repo="https://github.com/ElieSan99/postagram_ensai.git"
 
 
 user_data= base64.b64encode(f"""
@@ -40,7 +40,7 @@ class ServerStack(TerraformStack):
     def __init__(self, scope: Construct, id: str):
         super().__init__(scope, id)
         AwsProvider(self, "AWS", region="us-east-1")
-        account_id = DataAwsCallerIdentity(self, "acount_id").account_id
+        account_id = DataAwsCallerIdentity(self, "account_id").account_id
 
         default_vpc = DefaultVpc(
             self, "default_vpc"
@@ -91,15 +91,54 @@ class ServerStack(TerraformStack):
             ]
             )
         
-        launch_template = LaunchTemplate()
+        launch_template = LaunchTemplate(
+            self, "launch template",
+            image_id="ami-080e1f13689e07408",
+            instance_type="t2.micro", # le type de l'instance
+            vpc_security_group_ids = [security_group.id],
+            key_name="vockey",
+            user_data=user_data,
+            tags={"Name":"template TF"}
+            )
         
-        lb = Lb()
+        lb = Lb(
+            self, "lb",
+            load_balancer_type="application",
+            security_groups=[security_group.id],
+            subnets=subnets
+            )
 
-        target_group=LbTargetGroup()
+        target_group=LbTargetGroup(
+            self, "tg_group",
+            port=80,
+            protocol="HTTP",
+            vpc_id=default_vpc.id,
+            target_type="instance"
+            )
 
-        lb_listener = LbListener()
+        lb_listener = LbListener(
+            self, "lb_listener",
+            load_balancer_arn=lb.arn,
+            port=80,
+            protocol="HTTP",
+            default_action=[LbListenerDefaultAction(type="forward", target_group_arn=target_group.arn)]
+            )
 
-        asg = AutoscalingGroup()
+        asg = AutoscalingGroup(
+            self, "asg",
+            min_size=1,
+            max_size=4,
+            desired_capacity=1,
+            launch_template={"id":launch_template.id},
+            vpc_zone_identifier= subnets,
+            target_group_arns=[target_group.arn]
+            )
+        
+        TerraformOutput(self, "lb_dns_name",
+                        value=lb.dns_name,
+                        description="URL of the Load balancer DNS")
+
+
 
 
 app = App()
