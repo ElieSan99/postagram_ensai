@@ -14,7 +14,7 @@ from cdktf_cdktf_provider_aws.data_aws_caller_identity import DataAwsCallerIdent
 
 import base64
 
-bucket="my-cdktf-bucket-postgram20240509151249006500000001"
+bucket="my-cdktf-bucket-postgram20240514104740344000000001"
 dynamo_table="post-table"
 your_repo="https://github.com/ElieSan99/postagram_ensai.git"
 
@@ -98,6 +98,7 @@ class ServerStack(TerraformStack):
             vpc_security_group_ids = [security_group.id],
             key_name="vockey",
             user_data=user_data,
+            iam_instance_profile={"name":"LabInstanceProfile"},
             tags={"Name":"template TF"}
             )
         
