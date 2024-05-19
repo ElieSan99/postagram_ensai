@@ -1,3 +1,3 @@
 # Membre de l'équipe
 
-SANON Elie
+# SANON Elie

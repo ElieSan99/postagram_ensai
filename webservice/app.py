@@ -6,7 +6,7 @@ from typing import Union
 import logging
 from fastapi import FastAPI, Request, status, Header
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
@@ -35,9 +35,17 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 	return JSONResponse(content=content, status_code=status.HTTP_422_UNPROCESSABLE_ENTITY)
 
 
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/docs")
+
+
 class Post(BaseModel):
     title: str
     body: str
+    
 
 
 my_config = Config(
@@ -51,22 +59,24 @@ s3_client = boto3.client('s3', config=boto3.session.Config(signature_version='s3
 bucket = os.getenv("BUCKET")
 
 
+
 @app.post("/posts")
-async def post_a_post(post: Post, authorization: str | None = Header(default=None)):
+async def post_a_post(post: Post, username: str):
+
+    """ Comme le code ne fonctionne qu'en local j'ai remplacé 
+    la variable authorization par username et j'ai permis à l'utilisateur
+    de rentrer son nom d'utilisateur pour simuler une connexion 
+    ce qui permet d'avoir par exemple dans la table dynamodb "User#Elie" au lieu de "User#None"
+    """
 
     logger.info(f"title : {post.title}")
     logger.info(f"body : {post.body}")
-    logger.info(f"user : {authorization}")
-
-    # Doit retourner le résultat de la requête la table dynamodb
-    #assert post.title, "Veuillez insérer un titre"
-    #assert post.body, "Veuillez insérer un contenu"
-    #assert authorization, "Vous devez être connecté pour publier"
+    logger.info(f"user : {username}")
 
     post_id = uuid.uuid4()
 
     post_json = {
-        "user": f"USER#{authorization}",
+        "user": f"USER#{username}",
         "id": f"POST#{post_id}",
         "title": f"{post.title}",
         "body": f"{post.body}",
@@ -77,7 +87,9 @@ async def post_a_post(post: Post, authorization: str | None = Header(default=Non
     return data
 
 @app.get("/posts")
-async def get_all_posts(user: Union[str, None] = None):
+async def get_one_user_or_all_posts(user: Union[str, None] = None):
+    
+    """Récupère les posts d'un utilisateur ou tous les posts si user=None"""
 
     liste_posts = []
     if user:
@@ -97,11 +109,6 @@ async def get_all_posts(user: Union[str, None] = None):
     # Doit retourner une liste de post
     return liste_posts
 
-
-@app.delete("/posts/{post_id}")
-async def get_post_user_id(post_id: str):
-    # Doit retourner le résultat de la requête la table dynamodb
-    return []
 
 @app.get("/signedUrlPut")
 async def get_signed_url_put(filename: str,filetype: str, postId: str,authorization: str | None = Header(default=None)):
