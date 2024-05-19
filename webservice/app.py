@@ -67,6 +67,9 @@ async def post_a_post(post: Post, username: str):
     la variable authorization par username et j'ai permis à l'utilisateur
     de rentrer son nom d'utilisateur pour simuler une connexion 
     ce qui permet d'avoir par exemple dans la table dynamodb "User#Elie" au lieu de "User#None"
+
+    Ce qui permettra de tester la fonction get_one_user_or_all_posts avec un nom d'utilisateur
+
     """
 
     logger.info(f"title : {post.title}")
@@ -88,7 +91,7 @@ async def post_a_post(post: Post, username: str):
 
 @app.get("/posts")
 async def get_one_user_or_all_posts(user: Union[str, None] = None):
-    
+
     """Récupère les posts d'un utilisateur ou tous les posts si user=None"""
 
     liste_posts = []
